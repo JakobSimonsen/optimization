@@ -1,7 +1,7 @@
 import numpy as np
 from sympy.physics.quantum import TensorProduct
 from sympy.physics.paulialgebra import Pauli, evaluate_pauli_product
-from binsymbols import *
+#from binsymbols import *
 from sympy import *
 import itertools
 import math
@@ -11,15 +11,24 @@ Y=Pauli(2)
 Z=Pauli(3)
 I=1
 
+#List of all possible bit strings of length N.
+#DONT: dont put N > 20
 def all_states(n):
     return [''.join(i) for i in itertools.product('01', repeat= n)]
 
+#Hamming distance of 2 bit strings
 def hamming(s1, s2):
     return sum(c1 != c2 for c1, c2 in zip(s1, s2))
 
+#returns spesifict cases oand isinstance(j, list)f transfer matrices
+#leftright: fills spesifict indices to one base on a list (i,j) (can be a single index)
+#full: fills matrice with ones except diagonal
+#int
 def get_T(n, mode, d=1,i=None,j=None, shift=1, oddeven="both"):
     if mode=="leftright":
         T=np.zeros((n,n))
+        # "i" can be a index or a list
+        #TODO: check if j is list, raise error if not both are the same instance
         if isinstance(i,list):
             if not len(i)==len(j):
                 raise ValueError('mode "'+mode+'": lenght of index lists must be equal')
@@ -77,6 +86,7 @@ def get_T(n, mode, d=1,i=None,j=None, shift=1, oddeven="both"):
 
     return T
 
+#calculate hamming distance as defined in the articel
 def T_sum_Hamming_distance(T):
     val=0
     val2=0
@@ -154,6 +164,8 @@ def HtoString(H, symbolic=False):
         ret+=" "
     return ret
 
+#counting single qubit gates and cnots
+#go through all elements of sum H and strips out float values
 def num_Cnot(H, symbolic=False):
     sqg=0
     cnot=0
@@ -171,7 +183,7 @@ def num_Cnot(H, symbolic=False):
                     fval,item = item.args
                     if math.isclose(fval,0,abs_tol=1e-7):
                         item=None
-                        print("depug: close to zero", fval, item)
+                        print("debug: close to zero", fval, item)
         if isinstance(item, TensorProduct) or isinstance(item, Pauli):### go through Pauli string
             tps=PauliStringTP(excludeI=True)
             tps.get_items_PS(item)
@@ -196,7 +208,8 @@ def get_g(binstrings):
         expr*=tmp_expr
     return x, expand(expr)
 
-
+#One step of algorithm 1
+#converts bitstrings to paulistrings with 2 inputed bitstrings
 def convert_to_ps(bs1, bs2):
     n=len(bs1)
 
@@ -258,7 +271,7 @@ def add(binstringsA, binstringsB):
 def get_bitwise_negated_strings(binstrings):
     n=len(binstrings[0])
     m=len(binstrings)
-    
+
     binstrings_neg = []
     for i in range(m):
         tmp=''
@@ -273,7 +286,7 @@ def get_bitwise_negated_strings(binstrings):
 def get_negated_strings(binstrings, mask):
     n=len(binstrings[0])
     m=len(binstrings)
-    
+
     binstrings_neg = []
     for i in range(m):
         tmp=''
@@ -288,10 +301,10 @@ def get_negated_strings(binstrings, mask):
         binstrings_neg.append(tmp)
     return binstrings_neg
 
-
+#iterates through all binstrings where T is not 0
 def get_Pauli_string(binstrings, T, symbolic=False):
     m=len(binstrings)
-   
+
     pauli_str=0
     if symbolic:
         for i in range(m):
@@ -307,12 +320,14 @@ def get_Pauli_string(binstrings, T, symbolic=False):
 
     return pauli_str
 
+
 def simplifyH(H):
     for i in range(10):
         H = H.expand(tensorproduct=True)
     H=evaluate_pauli_product(H)
     return H
 
+#algorithm 2
 def get_H(stringlist,T,simplify=True, symbolic=False, verbose=False):
     H=get_Pauli_string(stringlist, T, symbolic=symbolic)
     if simplify:
@@ -322,12 +337,14 @@ def get_H(stringlist,T,simplify=True, symbolic=False, verbose=False):
     return H
 
 def print_info(stringlist,T,disp=True,simplify=True, disp_d=True, disp_g=True,disp_m=True, disp_H=True, disp_neg=True):
+    #amount of qubits
     n=len(stringlist[0])
+    #How large the hilbert space is of the full subspace
     m=len(stringlist)
 
     if disp_d:
         print("Hamming distance=", T_sum_Hamming_distance(T))
-    
+
     H=get_Pauli_string(stringlist, T)
     if simplify:
         H=simplifyH(H)
@@ -364,13 +381,13 @@ def print_info(stringlist,T,disp=True,simplify=True, disp_d=True, disp_g=True,di
             if disp_m:
                 display("H+H_minus=", H_minus)
                 print("#sqg, #cnots=",num_Cnot(H_minus))
-    
+
         if disp_g:
             x, pen = get_g(stringlist)
 
             g=lambdify(x, pen, "numpy")
 
-            print("g(x)=",pen)              
+            print("g(x)=",pen)
             print("is zero for the following bitstrings:")
             l=len(stringlist[0])
             if l==1:
@@ -407,7 +424,7 @@ def print_info2(stringlist,T,simplify=True):
 
     H=get_Pauli_string(stringlist, T)
     print("m,2**n",m,2**n)
-    
+
     if m<2**n:
         first=True
         for mask in reversed(all_states(n)):
@@ -482,7 +499,7 @@ def analyzeAdding(Cs,B,Tall=False):
                     Hs[ind][key]=Hadd
                     HSs[ind][key]=HtoString(Hadd)
                     Cnots[ind][key]=num_Cnot(Hadd)
-        
+
     else:
         for indi in range(m):
             Hs[indi]={}
@@ -534,5 +551,6 @@ def analyzeAdding(Cs,B,Tall=False):
                     Hs[indi][key]=Hadd
                     HSs[indi][key]=HtoString(Hadd)
                     Cnots[indi][key]=num_Cnot(Hadd)
-        
+
     return Hs, HSs, Cnots
+
