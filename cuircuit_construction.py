@@ -35,6 +35,7 @@ def cc(circuit, H, cnots, qlist=[]):
     if not qlist:
         for i in range(cnots):
             qlist.append(i)
+        qlist.append(cnots)
 
     cnots -= 1
     #simulator = QasmSimulator()
@@ -51,14 +52,16 @@ def cc(circuit, H, cnots, qlist=[]):
 
         #cnot gate generation stage
         #circuit.cx(range(0,cnots-1,1), range(1,cnots,1))
-        circuit = calculate_cnots(circuit, p_list, qlist)
+        circuit, cx_list = construct_cnots(circuit, p_list[index], qlist)
         #create rz gate with (2T) as param
         circuit.rz(2*t_list[index], cnots-1)
         #circuit.cx(range(cnots-2,-1, -1), range(cnots-1, 0, -1))
-        circuit = calculate_cnots(circuit, p_list, qlist, True)
+        #circuit = construct_cnots(circuit, p_list, qlist)
+        circuit = constrct_cnots_from_list(circuit, cx_list)
 
         #U dgr stage
         circuit = find_u_dgr(circuit, p_list[index], qlist)
+    print(circuit.draw())
 
 
     return circuit
@@ -104,23 +107,54 @@ def clean_up_pauli_reprecentation(pauli_string):
 
     return little_t_list, p_list
 
-def calculate_cnots(circuit, bitstring, qbitlist, downwards=True):
+def calculate_cnots(circuit, bitstrings, qbitlist, downwards=True):
+    print("Bitstring: ",bitstrings)
+    print("qbitlist: ", qbitlist)
 
+    #TODO: currently only looking at full string while we should itterate over all characters in string and add accordingly
     if downwards:
-        for index, character in enumerate(bitstring):
-            if character == 'I' or (index+1) == len(bitstring):
-                continue
-            else:
-               circuit.cx(qbitlist[index], qbitlist[index+1])
+        for index, characters in enumerate(bitstrings):
+            #TODO: continue here
+            for c_index, character in enumerate(characters):
+                print("index: ", index)
+                print("character: ", character)
+                if character == 'I' or (c_index+1) == len(characters):
+                    continue
+                else:
+                   circuit.cx(qbitlist[c_index], qbitlist[c_index+1])
     else:
-        for index, character in enumerate(reversed(bitstring)):
-            if character == 'I' or (index+1) == len(bitstring):
-                continue
-            else:
-               circuit.cx(qbitlist[index], qbitlist[index+1])
+        for index, characters in enumerate(reversed(bitstrings)):
 
+            for c_index, character in characters:
+                if character == 'I' or (c_index+1) == len(characters):
+                    continue
+                else:
+                   circuit.cx(qbitlist[c_index], qbitlist[c_index+1])
 
     return circuit
+
+def construct_cnots(circuit, bitstring, qbitlist):
+    cx_list = []
+    print(bitstring)
+
+    for index, character in enumerate(bitstring):
+        if (index+1)>= len(bitstring) or character == 'I':
+            continue
+        else:
+            circuit.cx(qbitlist[index], qbitlist[index+1])
+            cx_list.append((qbitlist[index], qbitlist[index+1]))
+
+
+    return circuit, cx_list
+
+def constrct_cnots_from_list(circuit, cx_list):
+
+    while cx_list:
+        curr = cx_list.pop()
+        circuit.cx(curr[0], curr[1])
+
+    return circuit
+
 
 
 
